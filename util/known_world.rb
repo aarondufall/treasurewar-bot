@@ -31,6 +31,7 @@ class KnownWorld
           @unknown_tiles << [tile_point.x, tile_point.y]
       end
     end
+
     create_map(x_dimension, y_dimension)
   end
 
@@ -42,7 +43,12 @@ class KnownWorld
     }
     STDOUT.puts("\e[H\e[2J")
     puts Terminal::Table.new params
-    puts @unknown_tiles.size.inspect
+    puts @unknown_tiles.uniq.size.inspect
+  end
+
+  def explore_target_point
+    #Find closest unknown tile to target
+
   end
 
   private
@@ -86,7 +92,7 @@ class KnownWorld
   end
 
   def visible_to_player?(x_point, y_point)
-    range = [-2, -1, 0, 1, 2]
+    range = [-3, -2, -1, 0, 1, 2, 3]
     range.include?(x_point - @player.position.x) && range.include?(y_point - @player.position.y)
   end
 
