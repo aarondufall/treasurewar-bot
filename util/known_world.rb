@@ -2,26 +2,34 @@ require_relative "./point"
 require 'terminal-table'
 
 class KnownWorld
-  attr_reader :map, :known_walls, :player
+  attr_reader :map, :known_walls, :known_floors, :player
 
   @@explored_area = []
 
   #Generate map from known wall points
-  def initialize(known_walls = [], player)
-    known_walls.reject!{|p| p.x.nil? || p.y.nil? }
+  def initialize(tiles = [], player)
+    tiles.reject!{|p| p.x.nil? || p.y.nil? }
 
-    x_dimension = known_walls.map(&:x).sort.last
-    y_dimension = known_walls.map(&:y).sort.last
+    x_dimension = tiles.map(&:x).sort.last
+    y_dimension = tiles.map(&:y).sort.last
 
     @map = []
     @explored_area = []
+    @known_floors = []
+    @known_walls = []
 
     @player = player
 
-    @known_walls = known_walls.inject([]) do |result, element|
-      result << [element.x, element.y]
+    tiles.each do |tile_point|
+      case tile_point.type
+        when 'floor'
+          @known_floors << [tile_point.x, tile_point.y]
+        when 'wall'
+          @known_walls << [tile_point.x, tile_point.y]
+        else
+          #puts "NFI"
+      end
     end
-
     create_map(x_dimension, y_dimension)
   end
 
@@ -31,8 +39,8 @@ class KnownWorld
       :headings => (0...@map.first.size).to_a,
       :rows => @map
     }
-    #STDOUT.puts("\e[H\e[2J")
-    #puts Terminal::Table.new params
+    STDOUT.puts("\e[H\e[2J")
+    puts Terminal::Table.new params
   end
 
   private
@@ -44,12 +52,14 @@ class KnownWorld
       0.upto(x) do |x_point|
         update_explored_area(x_point, y_point)
         row << case
-          when wall_found_at?(x_point, y_point)
-            'W'
           when player_found_at?(x_point, y_point)
             '@'
-          else
+          when wall_found_at?(x_point, y_point)
+            'W'
+          when floor_found_at?(x_point, y_point)
             explored_area?(x_point, y_point) ? '.' : ' '
+          else
+            ' '
           end
       end
       @map << row
@@ -63,6 +73,10 @@ class KnownWorld
 
   def wall_found_at?(x_point, y_point)
     @known_walls.include?([x_point, y_point])
+  end
+
+  def floor_found_at?(x_point, y_point)
+    @known_floors.include?([x_point, y_point])
   end
 
   def explored_area?(x_point, y_point)

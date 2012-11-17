@@ -1,12 +1,13 @@
 require "ir_b"
 class Point
-  attr_accessor :x, :y
+  attr_accessor :x, :y, :type
 
   include Comparable
 
   def initialize(hash)
-    @x = hash["x"] || hash[:x]
-    @y = hash["y"] || hash[:y]
+    @x    = hash["x"] || hash[:x]
+    @y    = hash["y"] || hash[:y]
+    @type = hash["type"] || hash[:type]
   end
 
   def direction_from(point)
