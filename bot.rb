@@ -1,7 +1,9 @@
 require 'SocketIO'
 
 require_relative './util/world'
+require_relative './util/fucker'
 
+@death = nil
 client = SocketIO.connect("http://localhost:8000") do
   before_start do
     on_message {|message| puts "incoming message: #{message}"}
@@ -10,6 +12,8 @@ client = SocketIO.connect("http://localhost:8000") do
     on_event('tick') { |game_state|
       puts "Tick received #{game_state.inspect}"
 
+      @death ||= Fucker.new(game_state.first['you'])
+      puts @death.inspect
       world = World.new(game_state.first)
 
       # Bot logic goes here...
