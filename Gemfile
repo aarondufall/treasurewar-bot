@@ -7,3 +7,4 @@ gem "guard-rspec"
 gem "guard-bundler"
 gem "rb-fsevent"
 
+gem 'terminal-table'
