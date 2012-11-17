@@ -1,5 +1,8 @@
 require_relative "./point"
 require 'terminal-table'
+require 'polaris'
+require 'line_of_sight'
+require 'two_d_grid_map'
 
 class KnownWorld
   attr_reader :map, :known_walls, :known_floors, :player, :unknown_tiles
@@ -21,7 +24,6 @@ class KnownWorld
     @unknown_tiles = {}
 
     @player = player
-    puts "PLAYER POSITION : #{@player.position.inspect}"
 
     #TODO : Don't fuck around with unknown tiles. I think we don't actually give a flying fuck.
     tiles.each do |tile_point|
@@ -62,15 +64,43 @@ class KnownWorld
       [point.x, point.y] != [@player.position.x, @player.position.y] && has_free_point?(point)
     end
 
-    puts points.inspect
+    #puts points.inspect
 
-    puts "TARGETS : #{points.size}"
+    #puts "TARGETS : #{points.size}"
+    # target_point = points.first[1]
+
+    #START FUCKING AROUND
+    path_map = TwoDGridMap.new @map.first.size, @map.size
+
+    #Add obstacles
+    @known_walls.each do |coord, point|
+      path_map.place TwoDGridLocation.new(coord[0], coord[1])
+    end
+
+    pather = Polaris.new path_map
+
+    points.inject(all_paths = {}) do |result, (coord,point)|
+      path_from = TwoDGridLocation.new @player.position.x, @player.position.y
+      path_to   = TwoDGridLocation.new point.x, point.y
+      path = pather.guide(path_from,path_to)
+      result[path.length] = path if path
+      result
+    end
+    best_path = all_paths[all_paths.keys.sort.first]
 
 
+    # puts "Target : x: #{target_point.x}, y: #{target_point.y}"
+    # puts "Start : x: #{@player.position.x}, y: #{@player.position.y}"
+    # path.each do |p|
+    #   puts "x: #{p.location.x}, y: #{p.location.y}"
+    # end
+    # puts pather.inspect
 
+    target_point = Point.new(x: best_path.first.location.x, y: best_path.first.location.y)
+    #END FUCKING AROUND
     #TODO : Loop through the fucking target points and find one that is accessible via a floor space
-    target_point = points.first[1].inspect
-    puts "Targetting : #{target_point.inspect}"
+
+    #puts "Targetting : #{target_point.inspect}"
     target_point
   end
 

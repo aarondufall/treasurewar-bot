@@ -1,6 +1,7 @@
 require_relative "./point"
 require_relative "./stash"
 require_relative "./you"
+require_relative "./player"
 require "ir_b"
 
 class World

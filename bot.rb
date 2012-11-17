@@ -2,10 +2,13 @@ require 'SocketIO'
 
 require_relative './util/world'
 require_relative './util/known_world'
-require_relative './pathfinder/lib/pathfinder'
+
+dev = "http://localhost:8000"
+prod = "http://treasure-war:8000"
+target = prod
 
 @world = nil
-client = SocketIO.connect("http://localhost:8000") do
+client = SocketIO.connect(target) do
   before_start do
     on_message {|message| puts "incoming message: #{message}"}
 
@@ -29,7 +32,7 @@ client = SocketIO.connect("http://localhost:8000") do
       end
       known_world = KnownWorld.new(@world.tiles, @world.you)
 
-      known_world.print_map
+      #known_world.print_map
       #Build known screen map
       # => Get largest X
       # => Get largest Y
@@ -40,7 +43,7 @@ client = SocketIO.connect("http://localhost:8000") do
         # Random bot likes to fight!
         emit("attack", {
           dir: @world.nearby_players.first.direction_from(
-            @world.position
+            known_world.player.position
           )
         })
       else
@@ -64,6 +67,6 @@ client = SocketIO.connect("http://localhost:8000") do
   end
 
   after_start do
-    emit("set name", "my bot name")
+    emit("set name", "Your mum")
   end
 end
