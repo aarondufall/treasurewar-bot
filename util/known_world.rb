@@ -66,6 +66,8 @@ class KnownWorld
             'W'
           when floor_found_at?(x_point, y_point)
             explored_area?(x_point, y_point) ? '.' : '?'
+          when unknown_tile_at?(x_point, y_point)
+            '?'
           else
             ' '
           end
@@ -77,6 +79,10 @@ class KnownWorld
 
   def player_found_at?(x_point, y_point)
     @player.position.x == x_point && @player.position.y == y_point
+  end
+
+  def unknown_tile_at?(x_point, y_point)
+    @unknown_tiles.include?([x_point, y_point])
   end
 
   def wall_found_at?(x_point, y_point)
