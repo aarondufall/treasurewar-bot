@@ -2,7 +2,7 @@ require_relative "./point"
 require 'terminal-table'
 
 class KnownWorld
-  attr_reader :map, :known_walls, :known_floors, :player
+  attr_reader :map, :known_walls, :known_floors, :player, :unknown_tiles
 
   @@explored_area = []
 
@@ -17,6 +17,7 @@ class KnownWorld
     @explored_area = []
     @known_floors = []
     @known_walls = []
+    @unknown_tiles = []
 
     @player = player
 
@@ -27,7 +28,7 @@ class KnownWorld
         when 'wall'
           @known_walls << [tile_point.x, tile_point.y]
         else
-          #puts "NFI"
+          @unknown_tiles << [tile_point.x, tile_point.y]
       end
     end
     create_map(x_dimension, y_dimension)
@@ -41,6 +42,7 @@ class KnownWorld
     }
     STDOUT.puts("\e[H\e[2J")
     puts Terminal::Table.new params
+    puts @unknown_tiles.size.inspect
   end
 
   private
@@ -57,7 +59,7 @@ class KnownWorld
           when wall_found_at?(x_point, y_point)
             'W'
           when floor_found_at?(x_point, y_point)
-            explored_area?(x_point, y_point) ? '.' : ' '
+            explored_area?(x_point, y_point) ? '.' : '?'
           else
             ' '
           end
@@ -89,6 +91,9 @@ class KnownWorld
   end
 
   def update_explored_area(x_point, y_point)
-    @@explored_area << [x_point, y_point] if visible_to_player?(x_point, y_point)
+    if visible_to_player?(x_point, y_point)
+      @unknown_tiles.delete([x_point, y_point])
+      @@explored_area << [x_point, y_point]
+    end
   end
 end

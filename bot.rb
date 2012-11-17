@@ -10,7 +10,7 @@ client = SocketIO.connect("http://localhost:8000") do
 
     # You have about 1 second between each tick
     on_event('tick') { |game_state|
-      puts "Tick received #{game_state.inspect}"
+      #puts "Tick received #{game_state.inspect}"
 
       @world ||= World.new(game_state.first)
 
@@ -43,7 +43,9 @@ client = SocketIO.connect("http://localhost:8000") do
           )
         })
       else
-        # Random bot moves randomly!
+        # Step 1 : move to space that is not a wall
+
+
         emit("move", {
           dir: World::DIRECTIONS.sample #@world.valid_move_directions.sample
         })
