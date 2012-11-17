@@ -2,7 +2,7 @@ require 'SocketIO'
 
 require_relative './util/world'
 
-client = SocketIO.connect("http://localhost:3001") do
+client = SocketIO.connect("http://localhost:8000") do
   before_start do
     on_message {|message| puts "incoming message: #{message}"}
 
