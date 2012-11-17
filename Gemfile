@@ -8,3 +8,4 @@ gem "guard-bundler"
 gem "rb-fsevent"
 
 gem 'terminal-table'
+gem 'polaris'

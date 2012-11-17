@@ -2,6 +2,7 @@ require 'SocketIO'
 
 require_relative './util/world'
 require_relative './util/known_world'
+require_relative './pathfinder/lib/pathfinder'
 
 @world = nil
 client = SocketIO.connect("http://localhost:8000") do
@@ -45,9 +46,12 @@ client = SocketIO.connect("http://localhost:8000") do
       else
         # Step 1 : move to space that is not a wall
 
-
+        puts "Moving : #{known_world.explore_new_point.direction_from(@world.you.position)}"
         emit("move", {
-          dir: World::DIRECTIONS.sample #@world.valid_move_directions.sample
+          #
+          #dir: World::DIRECTIONS.sample #@world.valid_move_directions.sample
+          dir: known_world.player.position.direction_from(known_world.explore_new_point)
+          #dir: known_world.explore_new_point.direction_from(@world.you.position)
         })
       end
 
