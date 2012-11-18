@@ -55,6 +55,10 @@ class Point
     end
   end
 
+  def magnitude(point)
+    (@x - point.x).abs + (@y - point.y).abs
+  end
+
   def == (point)
     @x == point.x && @y == point.y
   end

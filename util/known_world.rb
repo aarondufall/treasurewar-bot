@@ -7,9 +7,11 @@ require 'terminal-table'
 class KnownWorld
   attr_reader :map, :path_map, :pathfinder, :known_walls, :known_floors, :player
 
-  @@free_space_path = []
   @@explored_area = []
 
+  @@destination = nil
+  @@free_space_path = []
+  @@point_navigate_path = []
   #Generate map from known wall points
   def initialize(tiles = [], player)
     tiles.reject!{|p| p.x.nil? || p.y.nil? }
@@ -26,6 +28,7 @@ class KnownWorld
     y_dimension = tiles.map(&:y).sort.last
 
     @@free_space_path.delete(@player.position)
+    @@point_navigate_path.delete(@player.position)
 
     tiles.each do |tile_point|
       coord = [tile_point.x, tile_point.y]
@@ -41,10 +44,16 @@ class KnownWorld
       end
     end
 
-    @pathfinder = Pathfinder.new(x_dimension + 1, y_dimension + 1)
+    @pathfinder = Pathfinder.new(x_dimension, y_dimension)
     update_path_blocks(@known_walls.keys)
 
     create_map(x_dimension, y_dimension)
+  end
+
+  def reset_paths!
+    @@destination = nil
+    @@free_space_path = []
+    @@point_navigate_path = []
   end
 
   def print_map
@@ -69,6 +78,23 @@ class KnownWorld
     @@free_space_path = []
   end
 
+  def find_path_to_point(point)
+    if @@point_navigate_path.size > 0 && point == @@destination
+      return @@point_navigate_path.first
+    else
+      @@destination = point
+      path = @pathfinder.find_shortest_path(@player.position, point)
+      # path.each do |p|
+      #   puts "INNER PATH : #{p.inspect}"
+      # end
+      # puts "---"
+      @@point_navigate_path = path.map{|p| Point.new(x: p.location.x, y: p.location.y) }
+      @@free_space_path = []
+    end
+
+    @@point_navigate_path.first
+  end
+
   def find_free_space_target_point
     if @@free_space_path.size > 0
       #Already have a defined free space path
@@ -77,6 +103,9 @@ class KnownWorld
       #exit
       return @@free_space_path.first
     else
+      # Reset other path
+      @@point = nil
+      @@point_navigate_path = []
       #Calculate a new free space target point path
       @known_floors.inject(possible_points = []) do |result, (coord, point)|
         result << point if has_free_point?(point) && @player.position != point

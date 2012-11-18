@@ -6,4 +6,8 @@ class Stash < Point
     @treasures = hash["treasures"]
     super(hash)
   end
+
+  def to_point
+    Point.new(x: @x, y: @y)
+  end
 end

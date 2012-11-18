@@ -2,10 +2,11 @@ require_relative "./point"
 require_relative "./stash"
 require_relative "./you"
 require_relative "./player"
+require_relative "./treasure"
 require "ir_b"
 
 class World
-  attr_accessor :nearby_players, :nearby_stashes, :nearby_treasure
+  attr_accessor :nearby_players, :nearby_stashes, :nearby_items
   attr_accessor :you
   attr_accessor :tiles
 
@@ -22,6 +23,7 @@ class World
 
     update_world_tiles(state)
     update_nearby_players(state)
+    update_nearby_items(state)
   end
 
   def update_world_tiles(state)
@@ -29,6 +31,15 @@ class World
       point = Point.new(tile)
       @tiles.push point unless @tiles.include?(point)
     end
+  end
+
+  def update_nearby_items(state)
+    @nearby_items = []
+    for treasure in state["nearby_items"].select{|t| t["is_treasure"] }
+      @nearby_items.push Treasure.new(treasure)
+    end
+
+    @nearby_items.sort!{|a,b| a.magnitude(@you.position) <=> b.magnitude(@you.position) }
   end
 
   def update_nearby_players(state)

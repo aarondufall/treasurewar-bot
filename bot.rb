@@ -9,10 +9,11 @@ target = prod
 
 @world = nil
 @moved = false
-def order(order, attrs)
+def order(order, attrs, thinking = "")
   unless @moved
     emit(order, attrs)
-    puts "ORDER: #{order}, #{attrs.inspect}"
+    thinking = "Thinking #{thinking}" unless thinking == ""
+    puts "ORDER: #{order}, #{attrs.inspect} #{thinking}"
     @moved = true
   end
 end
@@ -46,15 +47,41 @@ client = SocketIO.connect(target) do
 
       known_world.print_map
 
-      for attackable_player in @world.nearby_players
-        if attackable_player.position.adjacent? @world.you.position
-          dir = @world.you.position.direction_from(
-              attackable_player.position
-            )
-
-          order("attack", { dir: dir })
+      if @world.you.carrying_treasure?
+        # Move to stash
+        if @world.you.position == @world.you.stash.to_point
+          order("drop", {}, "Dropping at stash")
+          known_world.reset_paths!
+        else
+          point = known_world.find_path_to_point(@world.you.stash.to_point)
+          ir b if known_world.player.position.direction_from(point) == nil
+          order("move", {
+            dir: known_world.player.position.direction_from(point)
+          }, "going home")
+        end
+      else
+        for item in @world.nearby_items
+          if item.to_point == @world.you.position
+            order("pick up", {})
+            known_world.reset_paths!
+          else
+            point = known_world.find_path_to_point(item.to_point)
+            order("move", {
+              dir: known_world.player.position.direction_from(point)
+            }, "acquiring tresure")
+          end
         end
       end
+
+      # for attackable_player in @world.nearby_players
+      #   if attackable_player.position.adjacent? @world.you.position
+      #     dir = @world.you.position.direction_from(
+      #         attackable_player.position
+      #       )
+
+      #     order("attack", { dir: dir })
+      #   end
+      # end
 
       unless @moved
         free_space_point = known_world.find_free_space_target_point

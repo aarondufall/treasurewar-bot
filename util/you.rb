@@ -13,5 +13,10 @@ class You
     @carrying_treasure = hash["carrying_treasure"]
     @position = Point.new(hash["position"])
     @stash = Stash.new(hash["stash"])
+    @hash = hash
+  end
+
+  def carrying_treasure?
+    !@hash["item_in_hand"].nil?
   end
 end
