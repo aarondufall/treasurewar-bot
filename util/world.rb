@@ -35,8 +35,6 @@ class World
     @nearby_players = []
 
     for player in state["nearby_players"]
-      puts "FUCK YOUR MUM"
-      puts player.inspect
       @nearby_players.push Player.new(player)
     end
   end

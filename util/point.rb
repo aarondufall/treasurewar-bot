@@ -27,6 +27,10 @@ class Point
     end
   end
 
+  def adjacent?(point)
+    (point.x - @x).abs <= 1 && (point.y - @y).abs <= 1
+  end
+
   def position_after(direction)
     case direction
     when :n  then Point.new(x: @x    , y: @y - 1)

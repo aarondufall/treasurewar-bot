@@ -65,6 +65,10 @@ class KnownWorld
     puts Terminal::Table.new params
   end
 
+  def died!
+    @@free_space_path = []
+  end
+
   def find_free_space_target_point
     if @@free_space_path.size > 0
       #Already have a defined free space path
