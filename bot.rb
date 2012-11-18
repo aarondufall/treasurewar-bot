@@ -14,7 +14,7 @@ client = SocketIO.connect(target) do
 
     # You have about 1 second between each tick
     on_event('tick') { |game_state|
-      #puts "Tick received #{game_state.inspect}"
+      puts "Tick received #{game_state.inspect}"
 
       @world ||= World.new(game_state.first)
 
@@ -22,39 +22,51 @@ client = SocketIO.connect(target) do
         @world.update_from_state(state)
       end
 
-
-      #puts @world.tiles.inspect
-      puts "=" * 100
-
-      while @world.tiles.size < 1 || @world.you.nil?
-        puts "Waiting for fucking server..."
-        sleep 1
-      end
+      # while @world.tiles.size < 1 || @world.you.nil?
+      #   puts "Waiting for fucking server..."
+      #   sleep 1
+      # end
       known_world = KnownWorld.new(@world.tiles, @world.you)
+      known_world.print_map
 
-      #known_world.print_map
-      #Build known screen map
-      # => Get largest X
-      # => Get largest Y
-      # => Create square (anything in tiles is a wall)
-
-      # Bot logic goes here...
-      if @world.nearby_players.any?
+      attackable_player = @world.nearby_players.first
+      #.select{|p| p.x && p.y }.first
+      if attackable_player
+        puts "=="
+        puts @world.nearby_players.inspect
+        exit
+      end
+      if attackable_player && attackable_player.x && attackable_player.y && known_world.player.position
         # Random bot likes to fight!
-        emit("attack", {
-          dir: @world.nearby_players.first.direction_from(
+        puts "FUCKING ATTACKING"
+
+        dir = attackable_player.direction_from(
             known_world.player.position
           )
-        })
-      else
-        # Step 1 : move to space that is not a wall
+        puts "IN DIRECTION : #{dir}"
 
-        puts "Moving : #{known_world.explore_new_point.direction_from(@world.you.position)}"
+        emit("attack", {
+          # dir: attackable_player.direction_from(
+          #   known_world.player.position
+          # )
+          dir: dir
+          #dir: known_world.player.position.direction_from(attackable_player)
+        })
+        exit
+      else
+        free_space_point = known_world.find_free_space_target_point
+        puts "TARGET POINT : #{free_space_point.inspect}"
+        dir = if free_space_point
+                #free_space_point.direction_from(known_world.player.position)
+                known_world.player.position.direction_from(free_space_point)
+              else
+                puts "No fucking idea"
+                World::DIRECTIONS.sample
+              end
+
+        puts "Moving : #{dir}"
         emit("move", {
-          #
-          #dir: World::DIRECTIONS.sample #@world.valid_move_directions.sample
-          dir: known_world.player.position.direction_from(known_world.explore_new_point)
-          #dir: known_world.explore_new_point.direction_from(@world.you.position)
+          dir: dir
         })
       end
 
@@ -67,6 +79,6 @@ client = SocketIO.connect(target) do
   end
 
   after_start do
-    emit("set name", "Your mum")
+    emit("set name", "Your mum2")
   end
 end

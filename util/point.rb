@@ -11,6 +11,7 @@ class Point
   end
 
   def direction_from(point)
+    return nil unless @x && @y && point && point.x && point.y
     dx = point.x - @x
     dy = point.y - @y
     case [dx <=> 0, dy <=> 0]

@@ -13,7 +13,6 @@ class World
 
   def initialize(state)
     @tiles = []
-    @nearby_players = []
 
     update_from_state(state)
   end
@@ -27,12 +26,17 @@ class World
 
   def update_world_tiles(state)
     for tile in state["tiles"]
-      @tiles.push Point.new(tile)
+      point = Point.new(tile)
+      @tiles.push point unless @tiles.include?(point)
     end
   end
 
   def update_nearby_players(state)
+    @nearby_players = []
+
     for player in state["nearby_players"]
+      puts "FUCK YOUR MUM"
+      puts player.inspect
       @nearby_players.push Player.new(player)
     end
   end

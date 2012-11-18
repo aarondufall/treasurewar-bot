@@ -1,92 +1,110 @@
 require_relative "./point"
+require_relative './pathfinder'
 require 'terminal-table'
-require 'polaris'
-require 'line_of_sight'
-require 'two_d_grid_map'
+
+
 
 class KnownWorld
-  attr_reader :map, :known_walls, :known_floors, :player, :unknown_tiles
+  attr_reader :map, :path_map, :pathfinder, :known_walls, :known_floors, :player
 
+  @@free_space_path = []
   @@explored_area = []
 
   #Generate map from known wall points
   def initialize(tiles = [], player)
     tiles.reject!{|p| p.x.nil? || p.y.nil? }
 
-    x_dimension = tiles.map(&:x).sort.last
-    y_dimension = tiles.map(&:y).sort.last
-
     @map = []
     @explored_area = []
 
     @known_floors = {}
     @known_walls = {}
-    @unknown_tiles = {}
-
+    @known_stashes = {}
     @player = player
 
-    #TODO : Don't fuck around with unknown tiles. I think we don't actually give a flying fuck.
+    x_dimension = tiles.map(&:x).sort.last
+    y_dimension = tiles.map(&:y).sort.last
+
+    @@free_space_path.delete(@player.position)
+
     tiles.each do |tile_point|
       coord = [tile_point.x, tile_point.y]
       case tile_point.type
       when 'floor'
-        @known_floors.update(coord => tile_point)
+        @known_floors[coord] = tile_point
       when 'wall'
-        @known_walls.update(coord => tile_point)
+        @known_walls[coord] = tile_point
+      when 'stash'
+        @known_stashes[coord] = tile_point
       else
-        @unknown_tiles.update(coord => tile_point)
+        raise "Unknown type : #{tile_point.type}" if tile_point.type
       end
     end
+
+    @pathfinder = Pathfinder.new(x_dimension + 1, y_dimension + 1)
+    update_path_blocks(@known_walls.keys)
 
     create_map(x_dimension, y_dimension)
   end
 
   def print_map
+    row_counter = 0
+    rows = @map.inject([]) do |result, row|
+        result << [row_counter] + row
+        row_counter += 1
+        result
+      end
+
     params = {
       :title => "Known World - Bitch!",
-      :headings => (0...@map.first.size).to_a,
-      :rows => @map
+      :headings => [" "] + (0...@map.first.size).to_a,
+      :rows => rows
     }
+
     STDOUT.puts("\e[H\e[2J")
     puts Terminal::Table.new params
-    puts @unknown_tiles.size.inspect
   end
 
-  def explore_new_point
-    #Find closest floor tile with no wall around it
-    # target_coord, target_point = @known_floors.detect do |coord, point|
-    #   #Has an adjacent tile with no wall || floor tile
-    #   explore_nearby?(point)
-    # end
+  def find_free_space_target_point
+    if @@free_space_path.size > 0
+      #Already have a defined free space path
+      #puts "RETURNING EXISTING TARGET : #{@@free_space_path}"
+      #puts "RETURNING EXISTING TARGET POINT : #{@@free_space_path.first.inspect}"
+      #exit
+      return @@free_space_path.first
+    else
+      #Calculate a new free space target point path
+      @known_floors.inject(possible_points = []) do |result, (coord, point)|
+        result << point if has_free_point?(point) && @player.position != point
+        result
+      end
 
-    points = @known_floors.select do |coord, point|
-      #explore_nearby?(point)
-      [point.x, point.y] != [@player.position.x, @player.position.y] && has_free_point?(point)
+      possible_points.sort! do |a,b|
+        @pathfinder.map.distance(@player.position, a) <=> @pathfinder.map.distance(@player.position, b)
+      end
+
+      target_point = nil
+      while possible_points.length > 0 && !target_point
+        point = possible_points.shift
+
+        # puts "HAS A FREE POINT MOTHERFUCKER : #{coord}"
+        # puts "MY POINT : #{point.inspect}"
+        # puts "PLAYER POINT : #{@player.position.inspect}"
+        # puts "PATH : #{@pathfinder.find_shortest_path(@player.position, point).inspect}"
+
+        if point && path = @pathfinder.find_shortest_path(@player.position, point)
+          # path.each do |p|
+          #   puts "INNER PATH : #{p.inspect}"
+          # end
+          # puts "---"
+          @@free_space_path = path.map{|p| Point.new(x: p.location.x, y: p.location.y) }
+          target_point = @@free_space_path.first
+        end
+      end
+
+      target_point
     end
 
-    #puts points.inspect
-
-    #puts "TARGETS : #{points.size}"
-    # target_point = points.first[1]
-
-    #START FUCKING AROUND
-    path_map = TwoDGridMap.new @map.first.size, @map.size
-
-    #Add obstacles
-    @known_walls.each do |coord, point|
-      path_map.place TwoDGridLocation.new(coord[0], coord[1])
-    end
-
-    pather = Polaris.new path_map
-
-    points.inject(all_paths = {}) do |result, (coord,point)|
-      path_from = TwoDGridLocation.new @player.position.x, @player.position.y
-      path_to   = TwoDGridLocation.new point.x, point.y
-      path = pather.guide(path_from,path_to)
-      result[path.length] = path if path
-      result
-    end
-    best_path = all_paths[all_paths.keys.sort.first]
 
 
     # puts "Target : x: #{target_point.x}, y: #{target_point.y}"
@@ -95,25 +113,13 @@ class KnownWorld
     #   puts "x: #{p.location.x}, y: #{p.location.y}"
     # end
     # puts pather.inspect
-
-    target_point = Point.new(x: best_path.first.location.x, y: best_path.first.location.y)
-    #END FUCKING AROUND
-    #TODO : Loop through the fucking target points and find one that is accessible via a floor space
-
-    #puts "Targetting : #{target_point.inspect}"
+    puts "Target : #{target_point.inspect}"
     target_point
   end
 
   private
 
-  # def explore_nearby?(point)
-  #   return true unless \
-  #     point.x, point.y == @player.position ||
-  #     has_free_point?(point)
-  #   false
-  # end
-
-  def has_free_point?(point)
+  def surrounding_coordinates_for_point(point)
     north     = [point.x, point.y - 1]
     northeast = [point.x + 1, point.y - 1]
     east      = [point.x + 1, point.y ]
@@ -123,12 +129,19 @@ class KnownWorld
     west      = [point.x - 1, point.y]
     northwest = [point.x - 1, point.y - 1]
 
-    #Find first cell, NOT present in @known_walls and @known_floors
-    #That is also within bounds of board
     [ north, northeast, east,
       southeast, south, southwest,
-    west, northwest ].any? do |surrounding_coord|
-      @known_walls[surrounding_coord].nil? && @known_floors[surrounding_coord].nil?
+      west, northwest ]
+  end
+
+  def has_free_point?(point)
+    #Find first cell, NOT present in @known_walls and @known_floors
+    #That is also within bounds of board
+    #Reject if not part of map (@map[y_coord][x_coord])
+    surrounding_coordinates_for_point(point).any? do |surrounding_coord|
+      @known_floors[surrounding_coord].nil? &&
+      @known_walls[surrounding_coord].nil? &&
+      @known_stashes[surrounding_coord].nil?
     end
   end
 
@@ -142,13 +155,16 @@ class KnownWorld
         when player_found_at?(x_point, y_point)
           '@'
         when wall_found_at?(x_point, y_point)
+          update_path_blocks([x_point, y_point])
           'W'
         when floor_found_at?(x_point, y_point)
-          '.'
-        when unknown_tile_at?(x_point, y_point)
-          '?'
+          @@free_space_path.include?(Point.new(:x => x_point, :y => y_point)) ? 'P' : '.'
+        when stash_found_at?(x_point, y_point)
+          '$'
         else
-          ' '
+          update_path_blocks([x_point, y_point])
+          @@free_space_path.include?(Point.new(:x => x_point, :y => y_point)) ? 'P' : ' '
+          #' '
         end
       end
       @map << row
@@ -160,8 +176,8 @@ class KnownWorld
     @player.position.x == x_point && @player.position.y == y_point
   end
 
-  def unknown_tile_at?(x_point, y_point)
-    @unknown_tiles[[x_point, y_point]]
+  def stash_found_at?(x_point, y_point)
+    @known_stashes[[x_point, y_point]]
   end
 
   def wall_found_at?(x_point, y_point)
@@ -183,8 +199,18 @@ class KnownWorld
 
   def update_explored_area(x_point, y_point)
     if visible_to_player?(x_point, y_point)
-      @unknown_tiles.delete([x_point, y_point])
       @@explored_area << [x_point, y_point]
     end
   end
+
+  def update_path_blocks(*coords)
+    coords.each do |coord|
+      @pathfinder.add_obstacle(coord)
+    end
+  end
+
+  def reset_free_space_path
+    @@free_space_path = []
+  end
+
 end
