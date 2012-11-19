@@ -23,7 +23,7 @@ class Point
     when [-1, 1] then :sw
     when [-1, 0] then :w
     when [-1, -1] then :nw
-    when [0, 0] then raise("The point at the same position")
+    when [0, 0] then :n.tap { puts "Called direction_from when you're on the point" }
     end
   end
 

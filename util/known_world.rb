@@ -20,13 +20,18 @@ class KnownWorld
     @explored_area = []
 
     @known_floors = {}
+    @last_seen_floors = {}
     @known_walls = {}
     @known_stashes = {}
+    @seen_floors = {}
     @player = player
 
     x_dimension = tiles.map(&:x).sort.last
     y_dimension = tiles.map(&:y).sort.last
 
+    if @@point_navigate_path.any? && !@@point_navigate_path.include?(@player.position)
+      find_path_to_point(@@destination) # Our path has become corrupted - recalculate it!
+    end
     @@free_space_path.delete(@player.position)
     @@point_navigate_path.delete(@player.position)
 
@@ -35,6 +40,7 @@ class KnownWorld
       case tile_point.type
       when 'floor'
         @known_floors[coord] = tile_point
+        @last_seen_floors[coord] = -1
       when 'wall'
         @known_walls[coord] = tile_point
       when 'stash'
@@ -42,6 +48,10 @@ class KnownWorld
       else
         raise "Unknown type : #{tile_point.type}" if tile_point.type
       end
+    end
+
+    for key in @last_seen_floors.keys
+      @last_seen_floors[key] = @last_seen_floors[key] + 1
     end
 
     @pathfinder = Pathfinder.new(x_dimension, y_dimension)
@@ -54,6 +64,15 @@ class KnownWorld
     @@destination = nil
     @@free_space_path = []
     @@point_navigate_path = []
+  end
+
+  def far_point(limit)
+    coord = @last_seen_floors.to_a.reject{|arr|
+      limit.magnitude(Point.new(x: arr[0][0], y: arr[0][1])) < 10
+    }.sort{|a,b| b[1] <=> a[1] }.first[0]
+    Point.new(x: coord[0], y: coord[0])
+  rescue
+    Point.new(x: 10, y: 10)
   end
 
   def print_map
@@ -78,10 +97,15 @@ class KnownWorld
     @@free_space_path = []
   end
 
-  def find_path_to_point(point)
+  def point_navigate_path
+    @@point_navigate_path
+  end
+
+  def find_path_to_point(point, debug = false)
     if @@point_navigate_path.size > 0 && point == @@destination
       return @@point_navigate_path.first
     else
+      ir b if debug
       @@destination = point
       path = @pathfinder.find_shortest_path(@player.position, point)
       # path.each do |p|
@@ -172,10 +196,15 @@ class KnownWorld
     #That is also within bounds of board
     #Reject if not part of map (@map[y_coord][x_coord])
     surrounding_coordinates_for_point(point).any? do |surrounding_coord|
+      is_on_gameboard?(surrounding_coord) &&
       @known_floors[surrounding_coord].nil? &&
       @known_walls[surrounding_coord].nil? &&
       @known_stashes[surrounding_coord].nil?
     end
+  end
+
+  def is_on_gameboard?(surrounding_coord)
+    surrounding_coord[0] >= 0 && surrounding_coord[1] >= 0
   end
 
   def create_map(x, y)

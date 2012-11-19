@@ -20,7 +20,7 @@ end
 
 client = SocketIO.connect(target) do
   after_start do
-    emit("set name", "mtcmorris")
+    emit("set name", `whoami`)
   end
   before_start do
     on_message {|message| puts "incoming message: #{message}"}
@@ -54,10 +54,11 @@ client = SocketIO.connect(target) do
           known_world.reset_paths!
         else
           point = known_world.find_path_to_point(@world.you.stash.to_point)
-          ir b if known_world.player.position.direction_from(point) == nil
-          order("move", {
-            dir: known_world.player.position.direction_from(point)
-          }, "going home")
+          if point
+            order("move", {
+              dir: known_world.player.position.direction_from(point)
+            }, "going home")
+          end
         end
       else
         for item in @world.nearby_items
@@ -68,37 +69,43 @@ client = SocketIO.connect(target) do
             point = known_world.find_path_to_point(item.to_point)
             order("move", {
               dir: known_world.player.position.direction_from(point)
-            }, "acquiring tresure")
+            }, "acquiring tresure") if point
           end
         end
       end
 
-      # for attackable_player in @world.nearby_players
-      #   if attackable_player.position.adjacent? @world.you.position
-      #     dir = @world.you.position.direction_from(
-      #         attackable_player.position
-      #       )
+      for attackable_player in @world.nearby_players
+        if attackable_player.position.adjacent? @world.you.position
+          dir = @world.you.position.direction_from(
+              attackable_player.position
+            )
 
-      #     order("attack", { dir: dir })
-      #   end
-      # end
+          order("attack", { dir: dir })
+        end
+      end
 
       unless @moved
         free_space_point = known_world.find_free_space_target_point
-        puts "TARGET POINT : #{free_space_point.inspect}"
-        dir = if free_space_point
-                #free_space_point.direction_from(known_world.player.position)
-                known_world.player.position.direction_from(free_space_point)
-              else
-                puts "No fucking idea"
-                World::DIRECTIONS.sample
-              end
-
-        puts "Moving : #{dir}"
-        order("move", {
-          dir: dir
-        })
+        if free_space_point
+          puts "TARGET POINT : #{free_space_point.inspect}"
+          order("move", {
+            dir: known_world.player.position.direction_from(free_space_point)
+          }, "Exploring")
+        end
       end
+
+      unless @moved
+        unseen_point = known_world.far_point(@world.you.stash.to_point)
+
+        point = known_world.find_path_to_point(unseen_point)
+        order("move", {
+          dir: known_world.player.position.direction_from(point)
+        }, "going to unseen point") if point
+      end
+
+      order("move", {
+        dir: World::DIRECTIONS.sample
+      }, "no fucking idea")
 
       # Valid commands:
       # emit("move", {dir: "n"})
